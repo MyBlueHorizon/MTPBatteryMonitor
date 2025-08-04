@@ -2,14 +2,14 @@
 #include <PortableDeviceApi.h>
 #include <PortableDevice.h>
 #include <stdio.h>
-#include <locale.h>  // 添加这个头文件以支持setlocale和LC_ALL
+#include <locale.h>
 
 #pragma comment(lib, "PortableDeviceGUIDs.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 
-// 手动定义COM接口方法
+// COM接口方法定义
 #define IPortableDeviceManager_GetDevices(This,pPnPDeviceIDs,pcPnPDeviceIDs) \
     (This)->lpVtbl->GetDevices(This,pPnPDeviceIDs,pcPnPDeviceIDs)
 
@@ -49,118 +49,99 @@
 #define IPortableDeviceManager_Release(This) \
     (This)->lpVtbl->Release(This)
 
-// 全局变量
 HWND hWnd;
 HWND hStatusLabel;
 
-// 函数声明
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HRESULT GetBatteryLevel(DWORD* pBatteryLevel);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-    // 设置本地化为中文
-    setlocale(LC_ALL, "chs");
+    // 设置程序为Unicode模式
+    _wsetlocale(LC_ALL, L"chs");
 
-    WCHAR szAppName[] = L"MTP Battery Monitor";
-    WNDCLASSW wndclass = {0};
+    // 注册窗口类
+    WNDCLASSW wc = {0};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    wc.lpszClassName = L"MTPBatteryMonitor";
     
-    wndclass.style = CS_HREDRAW | CS_VREDRAW;
-    wndclass.lpfnWndProc = WndProc;
-    wndclass.hInstance = hInstance;
-    wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
-    wndclass.lpszClassName = szAppName;
-    
-    if (!RegisterClassW(&wndclass))
-    {
-        MessageBoxW(NULL, L"程序需要Windows NT支持!", szAppName, MB_ICONERROR);
+    if (!RegisterClassW(&wc)) {
+        MessageBoxW(NULL, L"窗口注册失败!", L"错误", MB_ICONERROR);
         return 0;
     }
-    
+
+    // 创建主窗口
     hWnd = CreateWindowW(
-        szAppName,
-        L"MTP设备电量显示器",
+        L"MTPBatteryMonitor",
+        L"MTP设备电量监控",
         WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        300,
-        150,
-        NULL,
-        NULL,
-        hInstance,
-        NULL);
-    
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        320, 180,
+        NULL, NULL, hInstance, NULL);
+
+    // 创建状态标签
     hStatusLabel = CreateWindowW(
-        L"STATIC", 
-        L"正在获取电量...", 
-        WS_CHILD | WS_VISIBLE | SS_CENTER, 
-        10, 20, 260, 50, 
-        hWnd, 
-        NULL, 
-        hInstance, 
-        NULL);
-    
-    HFONT hFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, 
-                           OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, 
-                           DEFAULT_PITCH | FF_SWISS, L"微软雅黑");
+        L"STATIC", L"正在检测MTP设备...",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        10, 20, 280, 80,
+        hWnd, NULL, hInstance, NULL);
+
+    // 设置字体为微软雅黑
+    HFONT hFont = CreateFontW(
+        18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+        L"微软雅黑");
     SendMessageW(hStatusLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
-    
-    ShowWindow(hWnd, iCmdShow);
+
+    ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
-    
-    SetTimer(hWnd, 1, 10000, NULL);
-    
+
+    // 设置定时器，每5秒刷新一次
+    SetTimer(hWnd, 1, 5000, NULL);
+
+    // 立即刷新一次
     DWORD batteryLevel = 0;
-    if (SUCCEEDED(GetBatteryLevel(&batteryLevel)))
-    {
+    if (SUCCEEDED(GetBatteryLevel(&batteryLevel))) {
         WCHAR szText[100];
-        swprintf(szText, 100, L"当前MTP设备电量: %d%%", batteryLevel);
+        swprintf_s(szText, 100, L"当前电量: %d%%", batteryLevel);
         SetWindowTextW(hStatusLabel, szText);
+    } else {
+        SetWindowTextW(hStatusLabel, L"未检测到MTP设备\n请连接设备后重试");
     }
-    else
-    {
-        SetWindowTextW(hStatusLabel, L"无法获取MTP设备电量\n请确保设备已连接");
-    }
-    
+
+    // 消息循环
     MSG msg;
-    while (GetMessageW(&msg, NULL, 0, 0))
-    {
+    while (GetMessageW(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-    
+
     return (int)msg.wParam;
 }
 
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    switch (message)
-    {
-    case WM_TIMER:
-        {
+    switch (msg) {
+        case WM_TIMER: {
             DWORD batteryLevel = 0;
-            if (SUCCEEDED(GetBatteryLevel(&batteryLevel)))
-            {
+            if (SUCCEEDED(GetBatteryLevel(&batteryLevel))) {
                 WCHAR szText[100];
-                swprintf(szText, 100, L"当前MTP设备电量: %d%%", batteryLevel);
+                swprintf_s(szText, 100, L"当前电量: %d%%", batteryLevel);
                 SetWindowTextW(hStatusLabel, szText);
+            } else {
+                SetWindowTextW(hStatusLabel, L"未检测到MTP设备\n请连接设备后重试");
             }
-            else
-            {
-                SetWindowTextW(hStatusLabel, L"无法获取MTP设备电量\n请确保设备已连接");
-            }
+            break;
         }
-        break;
-        
-    case WM_DESTROY:
-        KillTimer(hWnd, 1);
-        PostQuitMessage(0);
-        break;
-        
-    default:
-        return DefWindowProcW(hWnd, message, wParam, lParam);
+        case WM_DESTROY:
+            KillTimer(hWnd, 1);
+            PostQuitMessage(0);
+            break;
+        default:
+            return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
     return 0;
 }
