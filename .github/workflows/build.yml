@@ -22,7 +22,7 @@ jobs:
            /Fe:MTPBatteryMonitor.exe /link PortableDeviceGUIDs.lib ole32.lib user32.lib gdi32.lib /SUBSYSTEM:WINDOWS
         
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MTPBatteryMonitor
         path: MTPBatteryMonitor.exe
