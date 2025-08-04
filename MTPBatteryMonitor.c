@@ -56,10 +56,22 @@ HWND hStatusLabel;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HRESULT GetBatteryLevel(DWORD* pBatteryLevel);
 
+// 设置控制台输出编码为UTF-8
+void SetConsoleToUTF8() {
+    SetConsoleOutputCP(65001); // UTF-8代码页
+    SetConsoleCP(65001);       // UTF-8代码页
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
 {
-    static TCHAR szAppName[] = TEXT("MTP Battery Monitor");
-    WNDCLASS wndclass = {0};
+    // 设置程序为UTF-8编码
+    SetConsoleToUTF8();
+    
+    // 设置本地化，解决中文乱码问题
+    setlocale(LC_ALL, "chs");
+
+    WCHAR szAppName[] = L"MTP Battery Monitor";
+    WNDCLASSW wndclass = {0};
     
     wndclass.style = CS_HREDRAW | CS_VREDRAW;
     wndclass.lpfnWndProc = WndProc;
@@ -69,15 +81,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
     wndclass.lpszClassName = szAppName;
     
-    if (!RegisterClass(&wndclass))
+    if (!RegisterClassW(&wndclass))
     {
-        MessageBox(NULL, TEXT("This program requires Windows NT!"), szAppName, MB_ICONERROR);
+        MessageBoxW(NULL, L"程序需要Windows NT支持!", szAppName, MB_ICONERROR);
         return 0;
     }
     
-    hWnd = CreateWindow(
+    hWnd = CreateWindowW(
         szAppName,
-        TEXT("MTP设备电量显示器"),
+        L"MTP设备电量显示器",
         WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -88,9 +100,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         hInstance,
         NULL);
     
-    hStatusLabel = CreateWindow(
-        TEXT("STATIC"), 
-        TEXT("正在获取电量..."), 
+    hStatusLabel = CreateWindowW(
+        L"STATIC", 
+        L"正在获取电量...", 
         WS_CHILD | WS_VISIBLE | SS_CENTER, 
         10, 20, 260, 50, 
         hWnd, 
@@ -98,10 +110,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         hInstance, 
         NULL);
     
-    HFONT hFont = CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, 
+    HFONT hFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, 
                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, 
-                           DEFAULT_PITCH | FF_SWISS, TEXT("Segoe UI"));
-    SendMessage(hStatusLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
+                           DEFAULT_PITCH | FF_SWISS, L"微软雅黑");
+    SendMessageW(hStatusLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
     
     ShowWindow(hWnd, iCmdShow);
     UpdateWindow(hWnd);
@@ -111,20 +123,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     DWORD batteryLevel = 0;
     if (SUCCEEDED(GetBatteryLevel(&batteryLevel)))
     {
-        TCHAR szText[100];
-        wsprintf(szText, TEXT("当前MTP设备电量: %d%%"), batteryLevel);
-        SetWindowText(hStatusLabel, szText);
+        WCHAR szText[100];
+        swprintf(szText, 100, L"当前MTP设备电量: %d%%", batteryLevel);
+        SetWindowTextW(hStatusLabel, szText);
     }
     else
     {
-        SetWindowText(hStatusLabel, TEXT("无法获取MTP设备电量\n请确保设备已连接"));
+        SetWindowTextW(hStatusLabel, L"无法获取MTP设备电量\n请确保设备已连接");
     }
     
     MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0))
+    while (GetMessageW(&msg, NULL, 0, 0))
     {
         TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        DispatchMessageW(&msg);
     }
     
     return (int)msg.wParam;
@@ -139,13 +151,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             DWORD batteryLevel = 0;
             if (SUCCEEDED(GetBatteryLevel(&batteryLevel)))
             {
-                TCHAR szText[100];
-                wsprintf(szText, TEXT("当前MTP设备电量: %d%%"), batteryLevel);
-                SetWindowText(hStatusLabel, szText);
+                WCHAR szText[100];
+                swprintf(szText, 100, L"当前MTP设备电量: %d%%", batteryLevel);
+                SetWindowTextW(hStatusLabel, szText);
             }
             else
             {
-                SetWindowText(hStatusLabel, TEXT("无法获取MTP设备电量\n请确保设备已连接"));
+                SetWindowTextW(hStatusLabel, L"无法获取MTP设备电量\n请确保设备已连接");
             }
         }
         break;
@@ -156,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
         
     default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProcW(hWnd, message, wParam, lParam);
     }
     return 0;
 }
