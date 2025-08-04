@@ -2,6 +2,7 @@
 #include <PortableDeviceApi.h>
 #include <PortableDevice.h>
 #include <stdio.h>
+#include <locale.h>  // 添加这个头文件以支持setlocale和LC_ALL
 
 #pragma comment(lib, "PortableDeviceGUIDs.lib")
 #pragma comment(lib, "ole32.lib")
@@ -56,18 +57,9 @@ HWND hStatusLabel;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HRESULT GetBatteryLevel(DWORD* pBatteryLevel);
 
-// 设置控制台输出编码为UTF-8
-void SetConsoleToUTF8() {
-    SetConsoleOutputCP(65001); // UTF-8代码页
-    SetConsoleCP(65001);       // UTF-8代码页
-}
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
 {
-    // 设置程序为UTF-8编码
-    SetConsoleToUTF8();
-    
-    // 设置本地化，解决中文乱码问题
+    // 设置本地化为中文
     setlocale(LC_ALL, "chs");
 
     WCHAR szAppName[] = L"MTP Battery Monitor";
