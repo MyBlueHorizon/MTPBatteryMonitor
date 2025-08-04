@@ -5,6 +5,8 @@
 
 #pragma comment(lib, "PortableDeviceGUIDs.lib")
 #pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "gdi32.lib")
 
 // 全局变量
 HWND hWnd;
@@ -92,7 +94,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         DispatchMessage(&msg);
     }
     
-    return msg.wParam;
+    return (int)msg.wParam;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -140,10 +142,10 @@ HRESULT GetBatteryLevel(DWORD* pBatteryLevel)
     
     // 创建设备管理器
     hr = CoCreateInstance(
-        __uuidof(PortableDeviceManager),
+        &CLSID_PortableDeviceManager,
         NULL,
         CLSCTX_INPROC_SERVER,
-        __uuidof(IPortableDeviceManager),
+        &IID_IPortableDeviceManager,
         (VOID**)&pDeviceManager);
     
     if (FAILED(hr))
@@ -155,14 +157,14 @@ HRESULT GetBatteryLevel(DWORD* pBatteryLevel)
     PWSTR* pPnpDeviceIDs = NULL;
     
     // 获取设备列表
-    hr = pDeviceManager->GetDevices(NULL, &cPnPDeviceIDs);
+    hr = IPortableDeviceManager_GetDevices(pDeviceManager, NULL, &cPnPDeviceIDs);
     if (FAILED(hr) || cPnPDeviceIDs == 0)
     {
         goto Cleanup;
     }
     
-    pPnpDeviceIDs = new PWSTR[cPnPDeviceIDs];
-    hr = pDeviceManager->GetDevices(pPnpDeviceIDs, &cPnPDeviceIDs);
+    pPnpDeviceIDs = (PWSTR*)CoTaskMemAlloc(sizeof(PWSTR) * cPnPDeviceIDs);
+    hr = IPortableDeviceManager_GetDevices(pDeviceManager, pPnpDeviceIDs, &cPnPDeviceIDs);
     if (FAILED(hr))
     {
         goto Cleanup;
@@ -170,10 +172,10 @@ HRESULT GetBatteryLevel(DWORD* pBatteryLevel)
     
     // 打开第一个设备
     hr = CoCreateInstance(
-        __uuidof(PortableDevice),
+        &CLSID_PortableDevice,
         NULL,
         CLSCTX_INPROC_SERVER,
-        __uuidof(IPortableDevice),
+        &IID_IPortableDevice,
         (VOID**)&pDevice);
     
     if (FAILED(hr))
@@ -181,21 +183,21 @@ HRESULT GetBatteryLevel(DWORD* pBatteryLevel)
         goto Cleanup;
     }
     
-    hr = pDevice->Open(pPnpDeviceIDs[0], NULL);
+    hr = IPortableDevice_Open(pDevice, pPnpDeviceIDs[0], NULL);
     if (FAILED(hr))
     {
         goto Cleanup;
     }
     
     // 获取设备内容
-    hr = pDevice->Content(&pContent);
+    hr = IPortableDevice_Content(pDevice, &pContent);
     if (FAILED(hr))
     {
         goto Cleanup;
     }
     
     // 获取设备属性
-    hr = pContent->Properties(&pProperties);
+    hr = IPortableDeviceContent_Properties(pContent, &pProperties);
     if (FAILED(hr))
     {
         goto Cleanup;
@@ -203,10 +205,10 @@ HRESULT GetBatteryLevel(DWORD* pBatteryLevel)
     
     // 创建要读取的属性集合
     hr = CoCreateInstance(
-        __uuidof(PortableDeviceKeyCollection),
+        &CLSID_PortableDeviceKeyCollection,
         NULL,
         CLSCTX_INPROC_SERVER,
-        __uuidof(IPortableDeviceKeyCollection),
+        &IID_IPortableDeviceKeyCollection,
         (VOID**)&pPropertiesToRead);
     
     if (FAILED(hr))
@@ -215,47 +217,47 @@ HRESULT GetBatteryLevel(DWORD* pBatteryLevel)
     }
     
     // 添加电池电量属性
-    hr = pPropertiesToRead->Add(WPD_DEVICE_POWER_LEVEL);
+    hr = IPortableDeviceKeyCollection_Add(pPropertiesToRead, &WPD_DEVICE_POWER_LEVEL);
     if (FAILED(hr))
     {
         goto Cleanup;
     }
     
     // 读取属性值
-    hr = pProperties->GetValues(NULL, pPropertiesToRead, &pPropertyValues);
+    hr = IPortableDeviceProperties_GetValues(pProperties, NULL, pPropertiesToRead, &pPropertyValues);
     if (FAILED(hr))
     {
         goto Cleanup;
     }
     
     // 获取电池电量值
-    hr = pPropertyValues->GetUnsignedIntegerValue(WPD_DEVICE_POWER_LEVEL, pBatteryLevel);
+    hr = IPortableDeviceValues_GetUnsignedIntegerValue(pPropertyValues, &WPD_DEVICE_POWER_LEVEL, pBatteryLevel);
     
 Cleanup:
     // 释放资源
     if (pPropertyValues != NULL)
     {
-        pPropertyValues->Release();
+        IPortableDeviceValues_Release(pPropertyValues);
     }
     
     if (pPropertiesToRead != NULL)
     {
-        pPropertiesToRead->Release();
+        IPortableDeviceKeyCollection_Release(pPropertiesToRead);
     }
     
     if (pProperties != NULL)
     {
-        pProperties->Release();
+        IPortableDeviceProperties_Release(pProperties);
     }
     
     if (pContent != NULL)
     {
-        pContent->Release();
+        IPortableDeviceContent_Release(pContent);
     }
     
     if (pDevice != NULL)
     {
-        pDevice->Release();
+        IPortableDevice_Release(pDevice);
     }
     
     if (pPnpDeviceIDs != NULL)
@@ -264,12 +266,12 @@ Cleanup:
         {
             CoTaskMemFree(pPnpDeviceIDs[i]);
         }
-        delete[] pPnpDeviceIDs;
+        CoTaskMemFree(pPnpDeviceIDs);
     }
     
     if (pDeviceManager != NULL)
     {
-        pDeviceManager->Release();
+        IPortableDeviceManager_Release(pDeviceManager);
     }
     
     CoUninitialize();
