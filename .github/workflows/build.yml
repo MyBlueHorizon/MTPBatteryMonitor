@@ -18,7 +18,7 @@ jobs:
       
     - name: Build application
       run:
-        cl MTPBatteryMonitor.c /nologo /O2 /MT /W3 /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN /Fe:MTPBatteryMonitor.exe /link PortableDeviceGUIDs.lib ole32.lib user32.lib gdi32.lib /SUBSYSTEM:WINDOWS 
+        cl MTPBatteryMonitor.c /nologo /O2 /MT /W3 /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN /Fe:MTPBatteryMonitor.exe /link PortableDeviceGUIDs.lib ole32.lib user32.lib gdi32.lib /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup
         
     - name: Upload artifact
       uses: actions/upload-artifact@v4
