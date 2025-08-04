@@ -17,9 +17,8 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
       
     - name: Build application
-      run: |
-        cl MTPBatteryMonitor.c /nologo /O2 /MT /W3 /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN ^
-           /Fe:MTPBatteryMonitor.exe /link PortableDeviceGUIDs.lib ole32.lib user32.lib gdi32.lib /SUBSYSTEM:WINDOWS
+      run:
+        cl MTPBatteryMonitor.c /nologo /O2 /MT /W3 /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN /Fe:MTPBatteryMonitor.exe /link PortableDeviceGUIDs.lib ole32.lib user32.lib gdi32.lib /SUBSYSTEM:WINDOWS
         
     - name: Upload artifact
       uses: actions/upload-artifact@v4
